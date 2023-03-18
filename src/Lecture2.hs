@@ -50,9 +50,13 @@ zero, you can stop calculating product and return 0 immediately.
 
 >>> lazyProduct [4, 3, 7]
 84
+>>> lazyProduct [0..999999999999999999]
+0
 -}
-lazyProduct :: [Int] -> Int
-lazyProduct = error "TODO"
+lazyProduct :: (Num a, Eq a) => [a] -> a
+lazyProduct [] = 1
+lazyProduct (0:_) = 0
+lazyProduct (x:xs) = x * lazyProduct xs
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -62,7 +66,8 @@ lazyProduct = error "TODO"
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = error "TODO"
+duplicate [] = []
+duplicate (x:xs) = [x, x] ++ (duplicate xs)
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -74,7 +79,15 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt = error "TODO"
+removeAt :: Int -> [a] -> (Maybe a, [a])
+removeAt n list
+    | n < 0             = (Nothing, list)
+    | otherwise         = removeNext n [] list
+    where 
+        removeNext :: Int -> [a] -> [a] -> (Maybe a, [a])
+        removeNext _ left [] = (Nothing, left)
+        removeNext 0 left (r:rs) = (Just r, left ++ rs)
+        removeNext x left (r:rs) = removeNext (x-1) (left ++ [r]) rs
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -85,7 +98,8 @@ lists of even lengths.
 ♫ NOTE: Use eta-reduction and function composition (the dot (.) operator)
   in this function.
 -}
-evenLists = error "TODO"
+evenLists :: [[a]] -> [[a]]
+evenLists = filter $ even . length
 
 {- | The @dropSpaces@ function takes a string containing a single word
 or number surrounded by spaces and removes all leading and trailing
@@ -101,7 +115,8 @@ spaces.
 
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
-dropSpaces = error "TODO"
+dropSpaces :: String -> String
+dropSpaces = head . words
 
 {- |
 
@@ -164,6 +179,7 @@ data Knight = Knight
     , knightEndurance :: Int
     }
 
+dragonFight :: a
 dragonFight = error "TODO"
 
 ----------------------------------------------------------------------------
@@ -185,7 +201,12 @@ False
 True
 -}
 isIncreasing :: [Int] -> Bool
-isIncreasing = error "TODO"
+isIncreasing [] = True
+isIncreasing (a:as) =
+    isIncreasingNext a as where
+        isIncreasingNext :: Int -> [Int] -> Bool
+        isIncreasingNext _ [] = True
+        isIncreasingNext x (y:ys) = x<y && isIncreasingNext y ys
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -198,7 +219,11 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = error "TODO"
+merge ls [] = ls
+merge [] rs = rs
+merge (l:ls) (r:rs)
+    | l < r     = l:(merge ls (r:rs))
+    | otherwise = r:(merge (l:ls) rs)
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -215,7 +240,13 @@ The algorithm of merge sort is the following:
 [1,2,3]
 -}
 mergeSort :: [Int] -> [Int]
-mergeSort = error "TODO"
+mergeSort list
+    | n <= 1    = list
+    | otherwise = merge (mergeSort (take left list)) (mergeSort (take right $ reverse list))
+    where
+        n = length list
+        left = div n 2
+        right = n - left
 
 
 {- | Haskell is famous for being a superb language for implementing
@@ -267,8 +298,20 @@ data EvalError
 {- | Having all this set up, we can finally implement an evaluation function.
 It returns either a successful evaluation result or an error.
 -}
-eval :: Variables -> Expr -> Either EvalError Int
-eval = error "TODO"
+type EvalResult = Either EvalError Int
+eval :: Variables -> Expr -> EvalResult
+eval _ (Lit i)      = Right i
+eval vars (Var v)   =
+    case lookup v vars of
+        Nothing -> Left (VariableNotFound v)
+        Just i -> Right i
+eval vars (Add a b) =
+    evalAdd (eval vars a) (eval vars b)
+    where
+        evalAdd :: EvalResult -> EvalResult -> EvalResult
+        evalAdd (Left err) _ = Left err
+        evalAdd _ (Left err) = Left err
+        evalAdd (Right x) (Right y) = Right (x+y)
 
 {- | Compilers also perform optimizations! One of the most common
 optimizations is "Constant Folding". It performs arithmetic operations
@@ -292,4 +335,20 @@ Write a function that takes and expression and performs "Constant
 Folding" optimization on the given expression.
 -}
 constantFolding :: Expr -> Expr
-constantFolding = error "TODO"
+constantFolding (Lit i)             = Lit i
+constantFolding (Var v)             = Var v
+constantFolding (Add x1 y1)           = 
+    constantAdd (constantFolding x1) (constantFolding y1)
+    where
+        constantAdd :: Expr -> Expr -> Expr
+        constantAdd     (Lit x)             (Lit y)         = Lit (x+y)
+ 
+        constantAdd     (Lit x)                   a         = constantAdd a (Lit x)
+        constantAdd     a                   (Lit 0)         = a
+        constantAdd     (Add a (Lit x))     (Lit y)         = constantAdd a (Lit (x+y))
+
+        constantAdd     (Add a (Lit x))     (Add b (Lit y)) = constantAdd (Add a b) (Lit (x+y))
+
+        constantAdd     (Add a (Lit x))     b               = Add (Add a b) (Lit x)
+        constantAdd     a                   (Add b (Lit x)) = Add (Add a b) (Lit x)
+        constantAdd     a                   b               = Add a b

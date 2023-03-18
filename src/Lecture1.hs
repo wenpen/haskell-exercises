@@ -130,7 +130,7 @@ splitImpl input res word
     where c:other = input
 
 charToInt :: Char -> Int
-charToInt c = fst (head (filter (\x -> snd x == c) (zip [-1..9] ('-':['0'..'9']))))
+charToInt c = (fst . head) (filter (\x -> snd x == c) (zip [-1..9] ('-':['0'..'9'])))
 
 stringToInt :: String -> Int
 stringToInt str
@@ -168,7 +168,7 @@ lowerAndGreater :: Int -> [Int] -> String
 lowerAndGreater n list =
     intToString(n) ++
     " is greater than " ++
-    intToString(length(filter (<n) list)) ++
+    (intToString . length) (filter (<n) list) ++
     " elements and lower than " ++
     intToString(length(filter (>n) list)) ++
     " elements"
